@@ -56,7 +56,7 @@ The script supports standard punctuation and common prosigns. Prosigns should be
 ## Technical Details
 
 - **Frequency**: 650 Hz
-- **Sample Rate**: 44.1 kHz
+- **Sample Rate**: 22.05 kHz
 - **Default Char Speed**: 12 WPM
 - **Default Eff. Speed**: 5 WPM
 - **Timing**: Standard PARIS word basis (50 units per word).
