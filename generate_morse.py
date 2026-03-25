@@ -13,7 +13,7 @@ def generate_morse_wav(text, filename="morse.wav"):
         '8': '---..', '9': '----.', ' ': '/'
     }
 
-    SAMPLE_RATE = 44100
+    SAMPLE_RATE = 22050
     FREQUENCY = 650.0
     
     # 12 WPM Character Speed
