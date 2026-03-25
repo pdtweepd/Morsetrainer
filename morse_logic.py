@@ -171,17 +171,24 @@ def generate_voice_wav(text):
         if os.path.exists(path): os.remove(path)
         return None
 
-def combine_wavs(wav_list, output_filename):
+def combine_wavs(wav_list):
     """Combines multiple WAV files into one."""
     data = []
     params = None
     for wav_file in wav_list:
         if not wav_file or not os.path.exists(wav_file): continue
         with wave.open(wav_file, 'rb') as w:
+            file_params = w.getparams()
             if params is None:
-                params = w.getparams()
-            # If files have different sample rates, this simple join will fail.
-            # But espeak and our gen both use standard rates.
+                params = file_params
+            elif (file_params.nchannels != params.nchannels or
+                  file_params.sampwidth != params.sampwidth or
+                  file_params.framerate != params.framerate):
+                raise ValueError(
+                    f"WAV parameter mismatch: expected {params.nchannels}ch/"
+                    f"{params.framerate}Hz, got {file_params.nchannels}ch/"
+                    f"{file_params.framerate}Hz in {wav_file}"
+                )
             data.append(w.readframes(w.getnframes()))
     
     if not data: return None

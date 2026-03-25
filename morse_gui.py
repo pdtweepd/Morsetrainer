@@ -32,7 +32,9 @@ class MorseApp:
         self.random_mode = tk.StringVar(value="mixed")
         self.koch_level = tk.IntVar(value=2)
         self.include_voice = tk.BooleanVar(value=False)
-        
+        self._preview_wavs = []
+
+        self.char_wpm.trace_add('write', self._clamp_eff_wpm)
         self.create_widgets()
         
     def create_widgets(self):
@@ -144,40 +146,61 @@ class MorseApp:
         msg += f"espeak (Voice): {'Installed' if espeak else 'NOT Installed'}"
         messagebox.showinfo("Dependencies", msg)
 
+    def _clamp_eff_wpm(self, *_):
+        if self.eff_wpm.get() > self.char_wpm.get():
+            self.eff_wpm.set(self.char_wpm.get())
+
     def play_preview(self):
+        # Clean up temp files from the previous preview (playback is non-blocking)
+        for f in self._preview_wavs:
+            try:
+                if os.path.exists(f):
+                    os.remove(f)
+            except OSError:
+                pass
+        self._preview_wavs = []
+
         text_raw = self.text_input.get(1.0, tk.END).strip()
         if not text_raw:
             messagebox.showwarning("Warning", "Please enter some text.")
             return
-            
+
         text, ignored = morse_logic.sanitize_text(text_raw)
         if ignored:
             self.status.config(text=f"Sanitized: removed {len(ignored)} invalid chars", foreground="orange")
-            
+
         self.status.config(text="Generating preview...", foreground="blue")
         self.root.update_idletasks()
-        
+
         try:
             tu, _, char_g, word_g = morse_logic.calculate_timings(self.char_wpm.get(), self.eff_wpm.get())
             morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, self.freq.get())
-            
+            self._preview_wavs.append(morse_wav)
+
             wav_to_play = morse_wav
-            voice_wav = None
-            
             if self.include_voice.get():
                 voice_wav = morse_logic.generate_voice_wav(text)
                 if voice_wav:
-                    combined = morse_logic.combine_wavs([morse_wav, voice_wav], "combined.wav")
+                    self._preview_wavs.append(voice_wav)
+                    combined = morse_logic.combine_wavs([morse_wav, voice_wav])
+                    self._preview_wavs.append(combined)
                     wav_to_play = combined
-            
+
             success, msg = morse_logic.play_wav(wav_to_play)
             if success:
                 self.status.config(text="Playing Morse...", foreground="green")
             else:
                 messagebox.showerror("Error", msg)
-                
+
         except Exception as e:
             messagebox.showerror("Error", str(e))
+            for f in self._preview_wavs:
+                try:
+                    if os.path.exists(f):
+                        os.remove(f)
+                except OSError:
+                    pass
+            self._preview_wavs = []
 
     def execute(self):
         text_raw = self.text_input.get(1.0, tk.END).strip()
@@ -193,34 +216,39 @@ class MorseApp:
             
         self.status.config(text="Processing...", foreground="blue")
         self.root.update_idletasks()
-        
+
+        morse_wav = None
+        voice_wav = None
+        combined_wav = None
         try:
             tu, _, char_g, word_g = morse_logic.calculate_timings(self.char_wpm.get(), self.eff_wpm.get())
             morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, self.freq.get())
-            
+
             final_wav = morse_wav
             if self.include_voice.get():
                 voice_wav = morse_logic.generate_voice_wav(text)
                 if voice_wav:
-                    final_wav = morse_logic.combine_wavs([morse_wav, voice_wav], "final.wav")
-            
+                    combined_wav = morse_logic.combine_wavs([morse_wav, voice_wav])
+                    final_wav = combined_wav
+
             success, msg = morse_logic.convert_wav_to_mp3(final_wav, self.output_file.get())
-            
-            # Cleanup temp wavs
-            if os.path.exists(morse_wav): os.remove(morse_wav)
-            if self.include_voice.get() and voice_wav and os.path.exists(voice_wav): os.remove(voice_wav)
-            if final_wav != morse_wav and os.path.exists(final_wav): os.remove(final_wav)
-                
             if success:
                 self.status.config(text=f"Successfully saved to {os.path.basename(self.output_file.get())}", foreground="green")
                 messagebox.showinfo("Success", f"MP3 generated successfully:\n{self.output_file.get()}")
             else:
                 self.status.config(text="Conversion failed!", foreground="red")
                 messagebox.showerror("Error", msg)
-                
+
         except Exception as e:
             self.status.config(text="Error occurred!", foreground="red")
             messagebox.showerror("Error", str(e))
+        finally:
+            for f in filter(None, [morse_wav, voice_wav, combined_wav]):
+                try:
+                    if os.path.exists(f):
+                        os.remove(f)
+                except OSError:
+                    pass
 
 if __name__ == "__main__":
     root = tk.Tk()
