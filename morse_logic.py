@@ -98,7 +98,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
     return " ".join(groups)
 
 def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
-    SAMPLE_RATE = 44100
+    SAMPLE_RATE = 22050
     RAMP_TIME = 0.005 # 5ms
 
     def append_tone(frames, duration, frequency, volume=0.5):

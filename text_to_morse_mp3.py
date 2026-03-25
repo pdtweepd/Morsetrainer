@@ -97,7 +97,7 @@ def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_m
         '<SOS>': '...---...', '<BK>': '-...-.-'
     }
 
-    SAMPLE_RATE = 44100
+    SAMPLE_RATE = 22050
     FREQUENCY = 650.0
     RAMP_TIME = 0.005 # 5ms Rise/Fall time to prevent key clicks
 

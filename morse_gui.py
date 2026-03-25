@@ -48,11 +48,23 @@ class MorseApp:
         speed_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(speed_frame, text="Character Speed (WPM):").grid(row=0, column=0, sticky=tk.W)
-        ttk.Scale(speed_frame, from_=5, to=50, variable=self.char_wpm, orient=tk.HORIZONTAL).grid(row=0, column=1, sticky=tk.EW, padx=5)
+        self.char_scale = ttk.Scale(
+            speed_frame, from_=5, to=50, 
+            variable=self.char_wpm, 
+            orient=tk.HORIZONTAL,
+            command=lambda v: self.char_wpm.set(round(float(v)))
+        )
+        self.char_scale.grid(row=0, column=1, sticky=tk.EW, padx=5)
         ttk.Label(speed_frame, textvariable=self.char_wpm).grid(row=0, column=2)
         
         ttk.Label(speed_frame, text="Effective Speed (WPM):").grid(row=1, column=0, sticky=tk.W)
-        ttk.Scale(speed_frame, from_=1, to=50, variable=self.eff_wpm, orient=tk.HORIZONTAL).grid(row=1, column=1, sticky=tk.EW, padx=5)
+        self.eff_scale = ttk.Scale(
+            speed_frame, from_=1, to=50, 
+            variable=self.eff_wpm, 
+            orient=tk.HORIZONTAL,
+            command=lambda v: self.eff_wpm.set(round(float(v)))
+        )
+        self.eff_scale.grid(row=1, column=1, sticky=tk.EW, padx=5)
         ttk.Label(speed_frame, textvariable=self.eff_wpm).grid(row=1, column=2)
         
         speed_frame.columnconfigure(1, weight=1)
