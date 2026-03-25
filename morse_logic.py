@@ -79,7 +79,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
     letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     numbers = "0123456789"
     punctuation = ".,?!/()&:;=+-_\"$@"
-    
+
     if mode == "letters":
         pool = letters
     elif mode == "numbers":
@@ -90,7 +90,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
         pool = KOCH_SEQUENCE[:max(2, min(koch_level, len(KOCH_SEQUENCE)))]
     else: # mixed
         pool = letters + numbers + punctuation
-    
+
     groups = []
     for _ in range(count):
         group = "".join(random.choice(pool) for _ in range(5))
@@ -100,7 +100,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
 def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
     #PADRIEBBY# SAMPLE_RATE = 44100
     SAMPLE_RATE  = 22050
-    
+
     RAMP_TIME = 0.005 # 5ms
 
     def append_tone(frames, duration, frequency, volume=0.5):
@@ -122,17 +122,17 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
 
     frames = []
     tokens = re.findall(r'<[^>]+>|.', text.upper())
-    
+
     for token in tokens:
         if token == ' ':
             append_silence(frames, max(0, word_gap - char_gap))
             continue
-            
+
         code = MORSE_CODE.get(token)
         if not code and token.startswith('<') and token.endswith('>'):
             alt_token = token[1:-1]
             code = "".join(MORSE_CODE.get(c, "") for c in alt_token)
-        
+
         if code:
             if code == '/':
                 append_silence(frames, max(0, word_gap - char_gap))
@@ -165,11 +165,11 @@ def generate_voice_wav(text):
     clean_text = re.sub(r'[<>]', ' ', text)
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="voice_")
     os.close(fd) # Close it so espeak can write to it
-   
+
     try:
         # Use espeak to generate speech. -w writes to wav.
         #PADRIEBBY# subprocess.run(["espeak", "-w",path, clean_text], check=True)
-        subprocess.run([ os.getenv( "MTESPEAK"),"-w", path, clean_text], check=True)                        
+        subprocess.run([ os.getenv( "MTESPEAK"),"-w", path, clean_text], check=True)
         return path
     except Exception:
         if os.path.exists(path): os.remove(path)
@@ -187,9 +187,9 @@ def combine_wavs(wav_list, output_filename):
             # If files have different sample rates, this simple join will fail.
             # But espeak and our gen both use standard rates.
             data.append(w.readframes(w.getnframes()))
-    
+
     if not data: return None
-    
+
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="combined_")
     try:
         with os.fdopen(fd, 'wb') as tmp:
@@ -204,11 +204,11 @@ def combine_wavs(wav_list, output_filename):
 
 def get_lame_path():
     # Check for system lame first (best for compatibility across architectures)
-    system_lame = os.getenv( "MTLAME" ) 
+    system_lame = os.getenv( "MTLAME" )
     #PADRIEBBY# system_lame = "/usr/bin/lame"
     if os.path.exists(system_lame):
         return system_lame
-        
+
     # Fallback to local node-lame paths
     paths = [
         "/usr/share/morse-converter/node_modules/node-lame/vendor/lame/linux-x64/lame",
@@ -229,7 +229,7 @@ def convert_wav_to_mp3(wav_filename, mp3_filename):
         return False, f"Error: {e}"
 
 def play_wav(wav_filename):
-    try:              
+    try:
         subprocess.run([ os.getenv( "MTFFPLAY"), "-autoexit", wav_filename ])
         #PADRIEBBY# subprocess.Popen(["/usr/bin/aplay", "-q", "--", wav_filename])
         return True, "Playing..."

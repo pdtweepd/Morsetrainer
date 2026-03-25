@@ -17,13 +17,13 @@ def generate_morse_wav(text, filename="morse.wav"):
     SAMPLE_RATE = 22050
     #PADRIEBBY# SAMPLE_RATE = 44100
     FREQUENCY = 650.0
-    
+
     # 12 WPM Character Speed
-    UNIT_DURATION = 0.1 
+    UNIT_DURATION = 0.1
     DOT_DURATION = UNIT_DURATION
     DASH_DURATION = UNIT_DURATION * 3
     INTRA_GAP = UNIT_DURATION
-    
+
     # 5 WPM Effective Speed (Farnsworth timing)
     # T_s = (60/5 - 31*0.1) / 19 = 0.4684
     CHAR_GAP = 1.405
@@ -42,12 +42,12 @@ def generate_morse_wav(text, filename="morse.wav"):
 
     frames = []
     text = text.upper()
-    
+
     for char in text:
         if char in MORSE_CODE:
             code = MORSE_CODE[char]
             if code == '/':
-                # Word gap is total 3.279s. 
+                # Word gap is total 3.279s.
                 # Since we already appended CHAR_GAP after the previous character,
                 # we only need to append the difference.
                 append_silence(frames, WORD_GAP - CHAR_GAP)
@@ -57,10 +57,10 @@ def generate_morse_wav(text, filename="morse.wav"):
                         append_tone(frames, DOT_DURATION, FREQUENCY)
                     elif bit == '-':
                         append_tone(frames, DASH_DURATION, FREQUENCY)
-                    
+
                     if i < len(code) - 1:
                         append_silence(frames, INTRA_GAP)
-                
+
                 append_silence(frames, CHAR_GAP)
 
     with wave.open(filename, 'wb') as wav_file:

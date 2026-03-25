@@ -11,21 +11,21 @@ VERSION = "1.0.3"
 
 def check_dependencies():
     missing = []
-    if subprocess.run(["which", "node"], capture_output=True).returncode != 0:
-        missing.append("node")
-    if subprocess.run(["which", "npm"], capture_output=True).returncode != 0:
-        missing.append("npm")
-    
-    lame_path = "./node_modules/node-lame/vendor/lame/linux-x64/lame"
-    if not os.path.exists(lame_path):
-        missing.append("node-lame")
+    #PADRIEBBY# if subprocess.run(["which", "node"], capture_output=True).returncode != 0:
+    #PADRIEBBY#     missing.append("node")
+    #PADRIEBBY# if subprocess.run(["which", "npm"], capture_output=True).returncode != 0:
+    #PADRIEBBY#     missing.append("npm")
+
+    #PADRIEBBY# lame_path = "./node_modules/node-lame/vendor/lame/linux-x64/lame"
+    #PADRIEBBY# if not os.path.exists(lame_path):
+    #PADRIEBBY#     missing.append("node-lame")
 
     if not missing:
         return True
 
     print(f"\nMissing dependencies identified: {', '.join(missing)}")
     confirm = input("Would you like to attempt to install them now? (yes/no): ").lower().strip()
-    
+
     if confirm not in ['yes', 'y']:
         print("Installation cancelled. The script may not function correctly.")
         return False
@@ -72,7 +72,7 @@ def generate_random_text(count=10, mode="mixed"):
         pool = numbers
     else:
         pool = letters + numbers
-    
+
     groups = []
     for _ in range(count):
         group = "".join(random.choice(pool) for _ in range(5))
@@ -105,7 +105,7 @@ def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_m
     def append_tone(frames, duration, frequency, volume=0.5):
         num_samples = int(duration * SAMPLE_RATE)
         ramp_samples = int(RAMP_TIME * SAMPLE_RATE)
-        
+
         for i in range(num_samples):
             # Apply linear volume ramp
             current_vol = volume
@@ -113,7 +113,7 @@ def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_m
                 current_vol = volume * (i / ramp_samples)
             elif i > num_samples - ramp_samples:
                 current_vol = volume * ((num_samples - i) / ramp_samples)
-            
+
             value = int(current_vol * 32767.0 * math.sin(2.0 * math.pi * frequency * i / SAMPLE_RATE))
             frames.append(struct.pack('<h', value))
 
@@ -124,17 +124,17 @@ def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_m
 
     frames = []
     tokens = re.findall(r'<[^>]+>|.', text.upper())
-    
+
     for token in tokens:
         if token == ' ':
             append_silence(frames, max(0, word_gap - char_gap))
             continue
-            
+
         code = MORSE_CODE.get(token)
         if not code and token.startswith('<') and token.endswith('>'):
             alt_token = token[1:-1]
             code = "".join(MORSE_CODE.get(c, "") for c in alt_token)
-        
+
         if code:
             if code == '/':
                 append_silence(frames, max(0, word_gap - char_gap))
@@ -155,7 +155,8 @@ def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_m
         wav_file.writeframes(b''.join(frames))
 
 def convert_wav_to_mp3(wav_filename, mp3_filename):
-    lame_path = "./node_modules/node-lame/vendor/lame/linux-x64/lame"
+    lame_path = os.getenv( "MTLAME" )
+    #PADRIEBBY# lame_path = "./node_modules/node-lame/vendor/lame/linux-x64/lame"
     try:
         subprocess.run([lame_path, "-S", wav_filename, mp3_filename], check=True)
         return True
@@ -173,16 +174,16 @@ if __name__ == "__main__":
             print(f"\n--- Morse Code MP3 Generator (Training Edition) v{VERSION} ---")
             char_speed = float(input("Enter Character Speed (WPM) [default 12]: ") or 12)
             eff_speed = float(input("Enter Effective Word Speed (WPM) [default 5]: ") or 5)
-            
+
             raw_input = input("Enter Text (or type 'random' for practice groups): ")
-            
+
             if raw_input.lower().strip() == 'random':
                 count = int(input("How many groups of 5? [default 10]: ") or 10)
                 m_type = input("Mode (letters/numbers/mixed) [default mixed]: ").lower() or "mixed"
                 text = generate_random_text(count, m_type)
             else:
                 text = raw_input
-            
+
             if not text:
                 print("Text cannot be empty.")
                 continue
@@ -191,28 +192,28 @@ if __name__ == "__main__":
             print(f"- Text/Practice: '{text}'")
             print(f"- Character Speed: {char_speed} WPM")
             print(f"- Effective Speed: {eff_speed} WPM")
-            
+
             confirm = input("\nExecute script? (yes/no): ").lower().strip()
-            
+
             if confirm in ['yes', 'y']:
                 tu, intra, char_g, word_g = calculate_timings(char_speed, eff_speed)
                 output_filename = "morse.mp3"
                 temp_wav = "temp_morse.wav"
-                
+
                 print(f"Generating Morse code...")
                 generate_morse_wav(text, tu, intra, char_g, word_g, temp_wav)
-                
+
                 if convert_wav_to_mp3(temp_wav, output_filename):
                     print(f"Successfully saved to {output_filename}")
                     if raw_input.lower().strip() == 'random':
                         print(f"ANSWER KEY: {text}")
-                
+
                 if os.path.exists(temp_wav):
                     os.remove(temp_wav)
                 break
             else:
                 print("Restarting configuration...\n")
-                
+
         except ValueError:
             print("Invalid input. Please enter numbers where required.")
         except KeyboardInterrupt:
