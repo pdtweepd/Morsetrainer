@@ -139,7 +139,8 @@ class MorseApp:
 
     def check_deps(self):
         lame = morse_logic.get_lame_path()
-        espeak = os.path.exists("/usr/bin/espeak")
+        espeak = os.path.exists( os.getenv( "MTESPEAK" ) )
+        #PADRIEBBY# espeak = os.path.exists("/usr/bin/espeak")
         msg = f"Lame encoder: {'Found' if lame else 'NOT Found'}\n"
         msg += f"espeak (Voice): {'Installed' if espeak else 'NOT Installed'}"
         messagebox.showinfo("Dependencies", msg)

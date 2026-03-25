@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 VERSION = "1.0.3"
-
+#PADRIEBBY# Morsecode error: 1 .---- was coded as J .---
 MORSE_CODE = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
     'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
@@ -98,7 +98,9 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
     return " ".join(groups)
 
 def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
-    SAMPLE_RATE = 44100
+    #PADRIEBBY# SAMPLE_RATE = 44100
+    SAMPLE_RATE  = 22050
+    
     RAMP_TIME = 0.005 # 5ms
 
     def append_tone(frames, duration, frequency, volume=0.5):
@@ -163,9 +165,11 @@ def generate_voice_wav(text):
     clean_text = re.sub(r'[<>]', ' ', text)
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="voice_")
     os.close(fd) # Close it so espeak can write to it
+   
     try:
         # Use espeak to generate speech. -w writes to wav.
-        subprocess.run(["espeak", "-w", path, clean_text], check=True)
+        #PADRIEBBY# subprocess.run(["espeak", "-w",path, clean_text], check=True)
+        subprocess.run([ os.getenv( "MTESPEAK"),"-w", path, clean_text], check=True)                        
         return path
     except Exception:
         if os.path.exists(path): os.remove(path)
@@ -200,7 +204,8 @@ def combine_wavs(wav_list, output_filename):
 
 def get_lame_path():
     # Check for system lame first (best for compatibility across architectures)
-    system_lame = "/usr/bin/lame"
+    system_lame = os.getenv( "MTLAME" ) 
+    #PADRIEBBY# system_lame = "/usr/bin/lame"
     if os.path.exists(system_lame):
         return system_lame
         
@@ -224,8 +229,9 @@ def convert_wav_to_mp3(wav_filename, mp3_filename):
         return False, f"Error: {e}"
 
 def play_wav(wav_filename):
-    try:
-        subprocess.Popen(["/usr/bin/aplay", "-q", "--", wav_filename])
+    try:              
+        subprocess.run([ os.getenv( "MTFFPLAY"), "-autoexit", wav_filename ])
+        #PADRIEBBY# subprocess.Popen(["/usr/bin/aplay", "-q", "--", wav_filename])
         return True, "Playing..."
     except Exception as e:
         return False, f"Playback error: {e}"

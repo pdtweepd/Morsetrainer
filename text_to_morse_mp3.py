@@ -78,7 +78,7 @@ def generate_random_text(count=10, mode="mixed"):
         group = "".join(random.choice(pool) for _ in range(5))
         groups.append(group)
     return " ".join(groups)
-
+#PADRIEBBY# Morsecode error: 1 .---- was coded as J .---
 def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_morse.wav"):
     MORSE_CODE = {
         'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
@@ -97,7 +97,8 @@ def generate_morse_wav(text, tu, intra_gap, char_gap, word_gap, filename="temp_m
         '<SOS>': '...---...', '<BK>': '-...-.-'
     }
 
-    SAMPLE_RATE = 44100
+    SAMPLE_RATE = 22050
+    #PADRIEBBY# SAMPLE_RATE = 44100
     FREQUENCY = 650.0
     RAMP_TIME = 0.005 # 5ms Rise/Fall time to prevent key clicks
 
