@@ -38,3 +38,4 @@ local_settings.py
 # (assuming package_root is where intermediate build files are)
 package_root/
 GEMINI.md
+CLAUDE.md
