@@ -215,17 +215,22 @@ def combine_wavs(wav_list):
         raise e
 
 def get_lame_path():
-    # 1. Check PATH (best for cross-platform)
+    # 1. Check Environment Variable (Lead Dev preference)
+    env_path = os.getenv("MTLAME")
+    if env_path:
+        # If it's just a command name, find it in path, otherwise use as absolute path
+        if os.path.sep not in env_path:
+            cmd_path = shutil.which(env_path)
+            if cmd_path: return cmd_path
+        elif os.path.exists(env_path):
+            return env_path
+            
+    # 2. Check PATH as fallback
     lame_path = shutil.which("lame")
     if lame_path:
         return lame_path
         
-    # 2. Check standard Linux paths
-    linux_paths = ["/usr/bin/lame", "/usr/local/bin/lame"]
-    for p in linux_paths:
-        if os.path.exists(p): return p
-        
-    # 3. Fallback to bundled node-lame (deprecated/legacy)
+    # 3. Last resort fallback to local bundled node-lame
     bundled_paths = [
         "/usr/share/morse-converter/node_modules/node-lame/vendor/lame/linux-x64/lame",
         "./node_modules/node-lame/vendor/lame/linux-x64/lame"
