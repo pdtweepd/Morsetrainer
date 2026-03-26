@@ -8,6 +8,7 @@ except ImportError:
     sys.exit(1)
 
 import os
+import shutil
 import morse_logic
 
 class MorseApp:
@@ -153,9 +154,19 @@ class MorseApp:
 
     def check_deps(self):
         lame = morse_logic.get_lame_path()
-        espeak = os.path.exists("/usr/bin/espeak")
+        espeak = shutil.which("espeak") or shutil.which("espeak-ng")
+        
         msg = f"Lame encoder: {'Found' if lame else 'NOT Found'}\n"
+        if not lame:
+            msg += " (Install 'lame' via apt/brew or add to PATH)\n"
+            
         msg += f"espeak (Voice): {'Installed' if espeak else 'NOT Installed'}"
+        if not espeak:
+            if os.name == 'nt':
+                msg += " (Windows TTS will use PowerShell fallback)"
+            else:
+                msg += " (Install 'espeak' for voice support)"
+                
         messagebox.showinfo("Dependencies", msg)
 
     def _clamp_eff_wpm(self, *_):
