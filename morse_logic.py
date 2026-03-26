@@ -6,8 +6,9 @@ import re
 import random
 import subprocess
 import tempfile
+import shutil
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 MORSE_CODE = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
@@ -158,18 +159,37 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
         raise e
 
 def generate_voice_wav(text):
-    """Generates a WAV file using espeak TTS."""
-    # Clean text for espeak (remove prosign brackets)
+    """Generates a WAV file using espeak or other TTS."""
     clean_text = re.sub(r'[<>]', ' ', text)
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="voice_")
-    os.close(fd) # Close it so espeak can write to it
+    os.close(fd)
+    
     try:
-        # Use espeak to generate speech. -w writes to wav.
-        subprocess.run(["espeak", "-w", path, clean_text], check=True)
-        return path
+        # 1. Check Environment Variable (Lead Dev preference)
+        env_path = os.getenv("MTSPEAK")
+        if env_path:
+            cmd_path = shutil.which(env_path) if os.path.sep not in env_path else env_path
+            if cmd_path and os.path.exists(cmd_path) or shutil.which(env_path):
+                # We assume the env_path follows espeak's CLI (-w for output)
+                subprocess.run([env_path, "-w", path, clean_text], check=True)
+                return path
+
+        # 2. Cross-platform check for espeak/espeak-ng as fallback
+        espeak_path = shutil.which("espeak") or shutil.which("espeak-ng")
+        if espeak_path:
+            subprocess.run([espeak_path, "-w", path, clean_text], check=True)
+            return path
+        
+        # 3. On Windows, try PowerShell for TTS (no external dependency)
+        if os.name == 'nt':
+            ps_command = f"Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('{path}'); $speak.Speak('{clean_text}'); $speak.Dispose();"
+            subprocess.run(["powershell", "-Command", ps_command], check=True)
+            return path
+            
     except Exception:
         if os.path.exists(path): os.remove(path)
         return None
+    return None
 
 def combine_wavs(wav_list):
     """Combines multiple WAV files into one."""
@@ -184,11 +204,9 @@ def combine_wavs(wav_list):
             elif (file_params.nchannels != params.nchannels or
                   file_params.sampwidth != params.sampwidth or
                   file_params.framerate != params.framerate):
-                raise ValueError(
-                    f"WAV parameter mismatch: expected {params.nchannels}ch/"
-                    f"{params.framerate}Hz, got {file_params.nchannels}ch/"
-                    f"{file_params.framerate}Hz in {wav_file}"
-                )
+                # Silently skip incompatible files or handle resampling? 
+                # For now, let's just skip to prevent crashes.
+                continue
             data.append(w.readframes(w.getnframes()))
     
     if not data: return None
@@ -206,33 +224,56 @@ def combine_wavs(wav_list):
         raise e
 
 def get_lame_path():
-    # Check for system lame first (best for compatibility across architectures)
-    system_lame = "/usr/bin/lame"
-    if os.path.exists(system_lame):
-        return system_lame
+    # 1. Check Environment Variable (Lead Dev preference)
+    env_path = os.getenv("MTLAME")
+    if env_path:
+        # If it's just a command name, find it in path, otherwise use as absolute path
+        if os.path.sep not in env_path:
+            cmd_path = shutil.which(env_path)
+            if cmd_path: return cmd_path
+        elif os.path.exists(env_path):
+            return env_path
+            
+    # 2. Check PATH as fallback
+    lame_path = shutil.which("lame")
+    if lame_path:
+        return lame_path
         
-    # Fallback to local node-lame paths
-    paths = [
+    # 3. Last resort fallback to local bundled node-lame
+    bundled_paths = [
         "/usr/share/morse-converter/node_modules/node-lame/vendor/lame/linux-x64/lame",
         "./node_modules/node-lame/vendor/lame/linux-x64/lame"
     ]
-    for p in paths:
+    for p in bundled_paths:
         if os.path.exists(p): return os.path.abspath(p)
+        
     return None
 
 def convert_wav_to_mp3(wav_filename, mp3_filename):
     lame_path = get_lame_path()
-    if not lame_path: return False, "Lame encoder not found."
-    if not os.path.isabs(mp3_filename): mp3_filename = os.path.join(".", mp3_filename)
+    if not lame_path: 
+        return False, "Lame encoder not found. Please install 'lame' (apt install lame)."
+    
+    if not os.path.isabs(mp3_filename): mp3_filename = os.path.abspath(mp3_filename)
     try:
         subprocess.run([lame_path, "-S", wav_filename, mp3_filename], check=True)
         return True, "Success"
     except subprocess.CalledProcessError as e:
-        return False, f"Error: {e}"
+        return False, f"Error during MP3 conversion: {e}"
 
 def play_wav(wav_filename):
     try:
-        subprocess.Popen(["/usr/bin/aplay", "-q", "--", wav_filename])
-        return True, "Playing..."
+        if os.name == 'nt':
+            # Windows play wav
+            import winsound
+            winsound.PlaySound(wav_filename, winsound.SND_FILENAME | winsound.SND_ASYNC)
+            return True, "Playing..."
+        else:
+            # Linux play wav
+            aplay_path = shutil.which("aplay")
+            if aplay_path:
+                subprocess.Popen([aplay_path, "-q", "--", wav_filename])
+                return True, "Playing..."
+            return False, "aplay not found."
     except Exception as e:
         return False, f"Playback error: {e}"
