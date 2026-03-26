@@ -165,13 +165,22 @@ def generate_voice_wav(text):
     os.close(fd)
     
     try:
-        # Cross-platform check for espeak
+        # 1. Check Environment Variable (Lead Dev preference)
+        env_path = os.getenv("MTSPEAK")
+        if env_path:
+            cmd_path = shutil.which(env_path) if os.path.sep not in env_path else env_path
+            if cmd_path and os.path.exists(cmd_path) or shutil.which(env_path):
+                # We assume the env_path follows espeak's CLI (-w for output)
+                subprocess.run([env_path, "-w", path, clean_text], check=True)
+                return path
+
+        # 2. Cross-platform check for espeak/espeak-ng as fallback
         espeak_path = shutil.which("espeak") or shutil.which("espeak-ng")
         if espeak_path:
             subprocess.run([espeak_path, "-w", path, clean_text], check=True)
             return path
         
-        # On Windows, try PowerShell for TTS (no external dependency)
+        # 3. On Windows, try PowerShell for TTS (no external dependency)
         if os.name == 'nt':
             ps_command = f"Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('{path}'); $speak.Speak('{clean_text}'); $speak.Dispose();"
             subprocess.run(["powershell", "-Command", ps_command], check=True)

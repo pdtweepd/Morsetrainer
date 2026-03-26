@@ -1,4 +1,5 @@
 #!/bin/bash
 # Morse Trainer CLI Linux Startup Script
 export MTLAME="/usr/bin/lame"
+export MTSPEAK="/usr/bin/espeak"
 python3 text_to_morse_mp3.py "$@"
