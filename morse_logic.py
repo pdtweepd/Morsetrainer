@@ -99,6 +99,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
     return " ".join(groups)
 
 def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
+    frequency = max(200.0, min(4000.0, float(frequency)))
     SAMPLE_RATE = 22050
     RAMP_TIME = 0.005 # 5ms
 
@@ -169,26 +170,34 @@ def generate_voice_wav(text):
         env_path = os.getenv("MTSPEAK")
         if env_path:
             cmd_path = shutil.which(env_path) if os.path.sep not in env_path else env_path
-            if cmd_path and os.path.exists(cmd_path) or shutil.which(env_path):
-                # We assume the env_path follows espeak's CLI (-w for output)
-                subprocess.run([env_path, "-w", path, clean_text], check=True)
+            if cmd_path and os.path.exists(cmd_path):
+                subprocess.run([cmd_path, "-w", path, clean_text], check=True, capture_output=True)
                 return path
 
         # 2. Cross-platform check for espeak/espeak-ng as fallback
         espeak_path = shutil.which("espeak") or shutil.which("espeak-ng")
         if espeak_path:
-            subprocess.run([espeak_path, "-w", path, clean_text], check=True)
+            subprocess.run([espeak_path, "-w", path, clean_text], check=True, capture_output=True)
             return path
-        
+
         # 3. On Windows, try PowerShell for TTS (no external dependency)
         if os.name == 'nt':
-            ps_command = f"Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('{path}'); $speak.Speak('{clean_text}'); $speak.Dispose();"
-            subprocess.run(["powershell", "-Command", ps_command], check=True)
+            escaped_text = clean_text.replace("'", "''")
+            ps_command = (
+                f"Add-Type -AssemblyName System.speech; "
+                f"$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+                f"$speak.SetOutputToWaveFile('{path}'); "
+                f"$speak.Speak('{escaped_text}'); "
+                f"$speak.Dispose();"
+            )
+            subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
             return path
-            
+
     except Exception:
         if os.path.exists(path): os.remove(path)
         return None
+    # No TTS method available — clean up and return None
+    if os.path.exists(path): os.remove(path)
     return None
 
 def combine_wavs(wav_list):
@@ -256,9 +265,15 @@ def convert_wav_to_mp3(wav_filename, mp3_filename):
     
     if not os.path.isabs(mp3_filename): mp3_filename = os.path.abspath(mp3_filename)
     try:
-        subprocess.run([lame_path, "-S", wav_filename, mp3_filename], check=True)
+        result = subprocess.run(
+            [lame_path, "-S", wav_filename, mp3_filename],
+            check=False, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.strip()
+            return False, f"MP3 conversion failed: {stderr or f'exit code {result.returncode}'}"
         return True, "Success"
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         return False, f"Error during MP3 conversion: {e}"
 
 def play_wav(wav_filename):

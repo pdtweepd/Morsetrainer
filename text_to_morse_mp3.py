@@ -31,11 +31,11 @@ if __name__ == "__main__":
             raw_input = input("Enter Text (or type 'random' for practice groups): ")
             
             if raw_input.lower().strip() == 'random':
-                count = int(input("How many groups of 5? [default 10]: ") or 10)
-                m_type = input("Mode (letters/numbers/mixed/koch) [default mixed]: ").lower() or "mixed"
+                count = max(1, int(input("How many groups of 5? [default 10]: ") or 10))
+                m_type = input("Mode (letters/numbers/punctuation/mixed/koch) [default mixed]: ").lower() or "mixed"
                 level = 2
                 if m_type == "koch":
-                    level = int(input("Koch Level (1-40) [default 2]: ") or 2)
+                    level = max(2, min(40, int(input("Koch Level (2-40) [default 2]: ") or 2)))
                 text = morse_logic.generate_random_text(count, m_type, level)
             else:
                 text = raw_input
@@ -54,20 +54,20 @@ if __name__ == "__main__":
             if confirm in ['yes', 'y']:
                 tu, intra, char_g, word_g = morse_logic.calculate_timings(char_speed, eff_speed)
                 output_filename = "morse.mp3"
-                
-                print(f"Generating Morse code...")
-                temp_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g)
-                
-                success, message = morse_logic.convert_wav_to_mp3(temp_wav, output_filename)
-                if success:
-                    print(f"Successfully saved to {output_filename}")
-                    if raw_input.lower().strip() == 'random':
-                        print(f"ANSWER KEY: {text}")
-                else:
-                    print(f"Error: {message}")
-                
-                if temp_wav and os.path.exists(temp_wav):
-                    os.remove(temp_wav)
+                temp_wav = None
+                try:
+                    print(f"Generating Morse code...")
+                    temp_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g)
+                    success, message = morse_logic.convert_wav_to_mp3(temp_wav, output_filename)
+                    if success:
+                        print(f"Successfully saved to {output_filename}")
+                        if raw_input.lower().strip() == 'random':
+                            print(f"ANSWER KEY: {text}")
+                    else:
+                        print(f"Error: {message}")
+                finally:
+                    if temp_wav and os.path.exists(temp_wav):
+                        os.remove(temp_wav)
                 break
             else:
                 print("Restarting configuration...\n")

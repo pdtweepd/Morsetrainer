@@ -96,7 +96,7 @@ class MorseApp:
         ttk.Label(rand_frame, text="Random:").pack(side=tk.LEFT)
         ttk.Entry(rand_frame, textvariable=self.random_count, width=4).pack(side=tk.LEFT, padx=5)
         
-        self.mode_menu = ttk.OptionMenu(rand_frame, self.random_mode, "mixed", "letters", "numbers", "punctuation", "koch", "mixed")
+        self.mode_menu = ttk.OptionMenu(rand_frame, self.random_mode, "mixed", "letters", "numbers", "punctuation", "koch")
         self.mode_menu.pack(side=tk.LEFT, padx=5)
         
         self.koch_label = ttk.Label(rand_frame, text="Koch Lvl:")
@@ -189,15 +189,21 @@ class MorseApp:
             return
 
         text, ignored = morse_logic.sanitize_text(text_raw)
+        status_text = "Generating preview..."
         if ignored:
-            self.status.config(text=f"Sanitized: removed {len(ignored)} invalid chars", foreground="orange")
-
-        self.status.config(text="Generating preview...", foreground="blue")
+            status_text += f" (removed {len(ignored)} unsupported chars)"
+        self.status.config(text=status_text, foreground="blue")
         self.root.update_idletasks()
 
         try:
+            try:
+                freq = float(self.freq.get())
+            except (ValueError, tk.TclError):
+                messagebox.showwarning("Warning", "Invalid frequency value.")
+                return
+
             tu, _, char_g, word_g = morse_logic.calculate_timings(self.char_wpm.get(), self.eff_wpm.get())
-            morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, self.freq.get())
+            morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, freq)
             self._preview_wavs.append(morse_wav)
 
             wav_to_play = morse_wav
@@ -206,8 +212,9 @@ class MorseApp:
                 if voice_wav:
                     self._preview_wavs.append(voice_wav)
                     combined = morse_logic.combine_wavs([morse_wav, voice_wav])
-                    self._preview_wavs.append(combined)
-                    wav_to_play = combined
+                    if combined:
+                        self._preview_wavs.append(combined)
+                        wav_to_play = combined
 
             success, msg = morse_logic.play_wav(wav_to_play)
             if success:
@@ -240,19 +247,26 @@ class MorseApp:
         self.status.config(text="Processing...", foreground="blue")
         self.root.update_idletasks()
 
+        try:
+            freq = float(self.freq.get())
+        except (ValueError, tk.TclError):
+            messagebox.showwarning("Warning", "Invalid frequency value.")
+            return
+
         morse_wav = None
         voice_wav = None
         combined_wav = None
         try:
             tu, _, char_g, word_g = morse_logic.calculate_timings(self.char_wpm.get(), self.eff_wpm.get())
-            morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, self.freq.get())
+            morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, freq)
 
             final_wav = morse_wav
             if self.include_voice.get():
                 voice_wav = morse_logic.generate_voice_wav(text)
                 if voice_wav:
                     combined_wav = morse_logic.combine_wavs([morse_wav, voice_wav])
-                    final_wav = combined_wav
+                    if combined_wav:
+                        final_wav = combined_wav
 
             success, msg = morse_logic.convert_wav_to_mp3(final_wav, self.output_file.get())
             if success:
