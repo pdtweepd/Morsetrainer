@@ -37,5 +37,18 @@ local_settings.py
 # Ignore build outputs from dpkg-building script
 # (assuming package_root is where intermediate build files are)
 package_root/
+*.deb
+morse-converter_*.deb
+
+# Ignore generated audio files
+*.wav
+*.mp3
+temp_morse.wav
+combined.wav
+final.wav
+
+# NPM logs
+npm-debug.log*
+
 GEMINI.md
 CLAUDE.md
