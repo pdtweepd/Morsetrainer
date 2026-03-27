@@ -99,51 +99,67 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
     return " ".join(groups)
 
 def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
+    import array as _array
+    frequency = max(200.0, min(4000.0, float(frequency)))
     SAMPLE_RATE = 22050
     RAMP_TIME = 0.005 # 5ms
+    TWO_PI_F_OVER_SR = 2.0 * math.pi * frequency / SAMPLE_RATE
 
-    def append_tone(frames, duration, frequency, volume=0.5):
+    def make_tone(duration, volume=0.5):
         num_samples = int(duration * SAMPLE_RATE)
         ramp_samples = int(RAMP_TIME * SAMPLE_RATE)
+        samples = _array.array('h', [0]) * num_samples
         for i in range(num_samples):
             current_vol = volume
             if i < ramp_samples:
                 current_vol = volume * (i / ramp_samples)
             elif i > num_samples - ramp_samples:
                 current_vol = volume * ((num_samples - i) / ramp_samples)
-            value = int(current_vol * 32767.0 * math.sin(2.0 * math.pi * frequency * i / SAMPLE_RATE))
-            frames.append(struct.pack('<h', value))
+            samples[i] = int(current_vol * 32767.0 * math.sin(TWO_PI_F_OVER_SR * i))
+        return samples
 
-    def append_silence(frames, duration):
+    def make_silence(duration):
         num_samples = int(duration * SAMPLE_RATE)
-        for i in range(num_samples):
-            frames.append(struct.pack('<h', 0))
+        return _array.array('h', [0]) * num_samples
 
-    frames = []
+    # Pre-compute common tones and silences for reuse
+    dot_tone = make_tone(tu)
+    dash_tone = make_tone(tu * 3)
+    intra_silence = make_silence(tu)
+    char_silence = make_silence(char_gap)
+    word_extra = make_silence(max(0, word_gap - char_gap))
+
+    chunks = []
     tokens = re.findall(r'<[^>]+>|.', text.upper())
-    
+
     for token in tokens:
         if token == ' ':
-            append_silence(frames, max(0, word_gap - char_gap))
+            chunks.append(word_extra)
             continue
-            
+
         code = MORSE_CODE.get(token)
         if not code and token.startswith('<') and token.endswith('>'):
             alt_token = token[1:-1]
             code = "".join(MORSE_CODE.get(c, "") for c in alt_token)
-        
+
         if code:
             if code == '/':
-                append_silence(frames, max(0, word_gap - char_gap))
+                chunks.append(word_extra)
             else:
                 for i, bit in enumerate(code):
                     if bit == '.':
-                        append_tone(frames, tu, frequency)
+                        chunks.append(dot_tone)
                     elif bit == '-':
-                        append_tone(frames, tu * 3, frequency)
+                        chunks.append(dash_tone)
                     if i < len(code) - 1:
-                        append_silence(frames, tu)
-                append_silence(frames, char_gap)
+                        chunks.append(intra_silence)
+                chunks.append(char_silence)
+
+    # Combine all chunks into one array
+    import array as _array
+    all_samples = _array.array('h')
+    for chunk in chunks:
+        all_samples.extend(chunk)
 
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="morse_")
     try:
@@ -152,7 +168,7 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
                 wav_file.setnchannels(1)
                 wav_file.setsampwidth(2)
                 wav_file.setframerate(SAMPLE_RATE)
-                wav_file.writeframes(b''.join(frames))
+                wav_file.writeframes(all_samples.tobytes())
         return path
     except Exception as e:
         if os.path.exists(path): os.remove(path)
@@ -169,26 +185,42 @@ def generate_voice_wav(text):
         env_path = os.getenv("MTSPEAK")
         if env_path:
             cmd_path = shutil.which(env_path) if os.path.sep not in env_path else env_path
-            if cmd_path and os.path.exists(cmd_path) or shutil.which(env_path):
-                # We assume the env_path follows espeak's CLI (-w for output)
-                subprocess.run([env_path, "-w", path, clean_text], check=True)
+            if cmd_path and os.path.exists(cmd_path):
+                subprocess.run([cmd_path, "-w", path, clean_text], check=True, capture_output=True)
                 return path
 
         # 2. Cross-platform check for espeak/espeak-ng as fallback
         espeak_path = shutil.which("espeak") or shutil.which("espeak-ng")
         if espeak_path:
-            subprocess.run([espeak_path, "-w", path, clean_text], check=True)
+            subprocess.run([espeak_path, "-w", path, clean_text], check=True, capture_output=True)
             return path
-        
+
         # 3. On Windows, try PowerShell for TTS (no external dependency)
         if os.name == 'nt':
-            ps_command = f"Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('{path}'); $speak.Speak('{clean_text}'); $speak.Dispose();"
-            subprocess.run(["powershell", "-Command", ps_command], check=True)
+            # Write text to a temp file to avoid shell injection
+            text_fd, text_path = tempfile.mkstemp(suffix=".txt", prefix="tts_")
+            try:
+                with os.fdopen(text_fd, 'w', encoding='utf-8') as tf:
+                    tf.write(clean_text)
+                ps_command = (
+                    "Add-Type -AssemblyName System.speech; "
+                    "$text = Get-Content -Raw -LiteralPath "
+                    f"'{text_path.replace(chr(39), chr(39)+chr(39))}'; "
+                    "$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+                    f"$speak.SetOutputToWaveFile('{path.replace(chr(39), chr(39)+chr(39))}'); "
+                    "$speak.Speak($text); "
+                    "$speak.Dispose();"
+                )
+                subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
+            finally:
+                if os.path.exists(text_path): os.remove(text_path)
             return path
-            
+
     except Exception:
         if os.path.exists(path): os.remove(path)
         return None
+    # No TTS method available — clean up and return None
+    if os.path.exists(path): os.remove(path)
     return None
 
 def combine_wavs(wav_list):
@@ -238,15 +270,7 @@ def get_lame_path():
     lame_path = shutil.which("lame")
     if lame_path:
         return lame_path
-        
-    # 3. Last resort fallback to local bundled node-lame
-    bundled_paths = [
-        "/usr/share/morse-converter/node_modules/node-lame/vendor/lame/linux-x64/lame",
-        "./node_modules/node-lame/vendor/lame/linux-x64/lame"
-    ]
-    for p in bundled_paths:
-        if os.path.exists(p): return os.path.abspath(p)
-        
+
     return None
 
 def convert_wav_to_mp3(wav_filename, mp3_filename):
@@ -256,24 +280,44 @@ def convert_wav_to_mp3(wav_filename, mp3_filename):
     
     if not os.path.isabs(mp3_filename): mp3_filename = os.path.abspath(mp3_filename)
     try:
-        subprocess.run([lame_path, "-S", wav_filename, mp3_filename], check=True)
+        result = subprocess.run(
+            [lame_path, "-S", wav_filename, mp3_filename],
+            check=False, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.strip()
+            return False, f"MP3 conversion failed: {stderr or f'exit code {result.returncode}'}"
         return True, "Success"
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         return False, f"Error during MP3 conversion: {e}"
 
 def play_wav(wav_filename):
+    """Play a WAV file. Returns (success, message, process_or_None)."""
     try:
         if os.name == 'nt':
             # Windows play wav
             import winsound
             winsound.PlaySound(wav_filename, winsound.SND_FILENAME | winsound.SND_ASYNC)
-            return True, "Playing..."
+            return True, "Playing...", None
         else:
             # Linux play wav
             aplay_path = shutil.which("aplay")
             if aplay_path:
-                subprocess.Popen([aplay_path, "-q", "--", wav_filename])
-                return True, "Playing..."
-            return False, "aplay not found."
+                proc = subprocess.Popen([aplay_path, "-q", "--", wav_filename])
+                return True, "Playing...", proc
+            return False, "aplay not found.", None
     except Exception as e:
-        return False, f"Playback error: {e}"
+        return False, f"Playback error: {e}", None
+
+def stop_playback(proc):
+    """Stop a running playback process."""
+    if proc is None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=2)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass

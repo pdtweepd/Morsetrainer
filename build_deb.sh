@@ -23,7 +23,7 @@ Section: utils
 Priority: optional
 Architecture: all
 Depends: python3, python3-tk, espeak, lame, alsa-utils
-Maintainer: Gemini CLI <gemini-cli@example.com>
+Maintainer: Morsetrainer <morsetrainer@example.com>
 Description: Morse Code to MP3 Converter
  A graphical utility to convert text to Morse code MP3 files 
  with support for Farnsworth timing and random practice groups.
@@ -42,15 +42,26 @@ Categories=Education;Utility;
 EOF
 
 # 4. Create executable wrapper
-cat << EOF > $PKG_DIR/usr/bin/$APP_NAME
+cat << 'WRAPPER' > $PKG_DIR/usr/bin/$APP_NAME
 #!/bin/bash
 # Check for tkinter, though it should be handled by apt dependencies
 if ! python3 -c "import tkinter" &> /dev/null; then
     echo "Error: tkinter (python3-tk) is not installed."
 fi
-cd /usr/share/$APP_NAME
-python3 morse_gui.py "\$@"
-EOF
+
+# Locate lame
+for p in /usr/bin/lame /usr/local/bin/lame; do
+    if [ -x "$p" ]; then export MTLAME="$p"; break; fi
+done
+
+# Locate espeak/espeak-ng
+for p in /usr/bin/espeak-ng /usr/bin/espeak /usr/local/bin/espeak-ng /usr/local/bin/espeak; do
+    if [ -x "$p" ]; then export MTSPEAK="$p"; break; fi
+done
+
+cd /usr/share/morse-converter
+python3 morse_gui.py "$@"
+WRAPPER
 chmod +x $PKG_DIR/usr/bin/$APP_NAME
 
 # 5. Copy application files
