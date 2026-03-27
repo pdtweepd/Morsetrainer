@@ -19,7 +19,7 @@ class MorseApp:
         # High DPI scaling
         try:
             self.root.tk.call('tk', 'scaling', 1.5)
-        except:
+        except Exception:
             pass
             
         self.root.geometry("700x750")
@@ -34,9 +34,11 @@ class MorseApp:
         self.koch_level = tk.IntVar(value=2)
         self.include_voice = tk.BooleanVar(value=False)
         self._preview_wavs = []
+        self._playback_proc = None
 
         self.char_wpm.trace_add('write', self._clamp_eff_wpm)
         self.create_widgets()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         
     def create_widgets(self):
         style = ttk.Style()
@@ -125,6 +127,7 @@ class MorseApp:
         btn_frame.pack(fill=tk.X, pady=10)
         
         ttk.Button(btn_frame, text="Play Preview", command=self.play_preview).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(btn_frame, text="Stop", command=self.stop_preview).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         ttk.Button(btn_frame, text="Generate MP3", command=self.execute).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         ttk.Button(btn_frame, text="Check Dependencies", command=self.check_deps).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
@@ -173,8 +176,17 @@ class MorseApp:
         if self.eff_wpm.get() > self.char_wpm.get():
             self.eff_wpm.set(self.char_wpm.get())
 
+    def stop_preview(self):
+        morse_logic.stop_playback(self._playback_proc)
+        self._playback_proc = None
+        self.status.config(text="Stopped.", foreground="blue")
+
     def play_preview(self):
-        # Clean up temp files from the previous preview (playback is non-blocking)
+        # Stop any current playback
+        morse_logic.stop_playback(self._playback_proc)
+        self._playback_proc = None
+
+        # Clean up temp files from the previous preview
         for f in self._preview_wavs:
             try:
                 if os.path.exists(f):
@@ -216,8 +228,9 @@ class MorseApp:
                         self._preview_wavs.append(combined)
                         wav_to_play = combined
 
-            success, msg = morse_logic.play_wav(wav_to_play)
+            success, msg, proc = morse_logic.play_wav(wav_to_play)
             if success:
+                self._playback_proc = proc
                 self.status.config(text="Playing Morse...", foreground="green")
             else:
                 messagebox.showerror("Error", msg)
@@ -286,6 +299,16 @@ class MorseApp:
                         os.remove(f)
                 except OSError:
                     pass
+
+    def _on_close(self):
+        morse_logic.stop_playback(self._playback_proc)
+        for f in self._preview_wavs:
+            try:
+                if os.path.exists(f):
+                    os.remove(f)
+            except OSError:
+                pass
+        self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
