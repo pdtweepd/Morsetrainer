@@ -42,7 +42,7 @@ Categories=Education;Utility;
 EOF
 
 # 4. Create executable wrapper
-cat << 'WRAPPER' > $PKG_DIR/usr/bin/$APP_NAME
+cat << WRAPPER > $PKG_DIR/usr/bin/$APP_NAME
 #!/bin/bash
 # Check for tkinter, though it should be handled by apt dependencies
 if ! python3 -c "import tkinter" &> /dev/null; then
@@ -51,16 +51,16 @@ fi
 
 # Locate lame
 for p in /usr/bin/lame /usr/local/bin/lame; do
-    if [ -x "$p" ]; then export MTLAME="$p"; break; fi
+    if [ -x "\$p" ]; then export MTLAME="\$p"; break; fi
 done
 
 # Locate espeak/espeak-ng
 for p in /usr/bin/espeak-ng /usr/bin/espeak /usr/local/bin/espeak-ng /usr/local/bin/espeak; do
-    if [ -x "$p" ]; then export MTSPEAK="$p"; break; fi
+    if [ -x "\$p" ]; then export MTSPEAK="\$p"; break; fi
 done
 
 cd /usr/share/$APP_NAME
-python3 morse_gui.py "$@"
+python3 morse_gui.py "\$@"
 WRAPPER
 chmod +x $PKG_DIR/usr/bin/$APP_NAME
 
