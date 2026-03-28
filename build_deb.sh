@@ -22,7 +22,8 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3, python3-tk, espeak, lame, alsa-utils
+Depends: python3, python3-tk, alsa-utils
+Recommends: lame, espeak
 Maintainer: Morsetrainer <morsetrainer@example.com>
 Description: Morse Code to MP3 Converter
  A graphical utility to convert text to Morse code MP3 files 
