@@ -49,7 +49,8 @@ if __name__ == "__main__":
                 print("Text cannot be empty.")
                 continue
 
-            output_filename = input("Output filename [default morse.mp3]: ").strip() or "morse.mp3"
+            default_output = os.path.join(os.path.expanduser("~"), "morse.mp3")
+            output_filename = input(f"Output filename [default {default_output}]: ").strip() or default_output
             if not output_filename.endswith(".mp3"):
                 output_filename += ".mp3"
 

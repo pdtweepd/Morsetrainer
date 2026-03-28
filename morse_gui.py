@@ -28,7 +28,7 @@ class MorseApp:
         self.char_wpm = tk.IntVar(value=12)
         self.eff_wpm = tk.IntVar(value=5)
         self.freq = tk.DoubleVar(value=650)
-        self.output_file = tk.StringVar(value="morse.mp3")
+        self.output_file = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "morse.mp3"))
         self.random_count = tk.IntVar(value=10)
         self.random_mode = tk.StringVar(value="mixed")
         self.koch_level = tk.IntVar(value=2)

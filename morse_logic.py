@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import shutil
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 
 MORSE_CODE = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
