@@ -1,6 +1,5 @@
 import wave
 import math
-import struct
 import os
 import re
 import random
@@ -8,7 +7,7 @@ import subprocess
 import tempfile
 import shutil
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
 MORSE_CODE = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
@@ -156,7 +155,6 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
                 chunks.append(char_silence)
 
     # Combine all chunks into one array
-    import array as _array
     all_samples = _array.array('h')
     for chunk in chunks:
         all_samples.extend(chunk)
@@ -172,7 +170,7 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
         return path
     except Exception as e:
         if os.path.exists(path): os.remove(path)
-        raise e
+        raise
 
 def generate_voice_wav(text):
     """Generates a WAV file using espeak or other TTS."""
@@ -253,7 +251,7 @@ def combine_wavs(wav_list):
         return path
     except Exception as e:
         if os.path.exists(path): os.remove(path)
-        raise e
+        raise
 
 def get_lame_path():
     # 1. Check Environment Variable (Lead Dev preference)

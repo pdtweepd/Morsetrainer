@@ -103,7 +103,7 @@ class MorseApp:
         
         self.koch_label = ttk.Label(rand_frame, text="Koch Lvl:")
         self.koch_label.pack(side=tk.LEFT, padx=(10, 0))
-        self.koch_spin = ttk.Spinbox(rand_frame, from_=2, to=40, textvariable=self.koch_level, width=3)
+        self.koch_spin = ttk.Spinbox(rand_frame, from_=2, to=len(morse_logic.KOCH_SEQUENCE), textvariable=self.koch_level, width=3)
         self.koch_spin.pack(side=tk.LEFT, padx=5)
         
         ttk.Button(rand_frame, text="Generate Practice", command=self.generate_random).pack(side=tk.LEFT, padx=5)

@@ -59,7 +59,7 @@ for p in /usr/bin/espeak-ng /usr/bin/espeak /usr/local/bin/espeak-ng /usr/local/
     if [ -x "$p" ]; then export MTSPEAK="$p"; break; fi
 done
 
-cd /usr/share/morse-converter
+cd /usr/share/$APP_NAME
 python3 morse_gui.py "$@"
 WRAPPER
 chmod +x $PKG_DIR/usr/bin/$APP_NAME

@@ -27,6 +27,9 @@ if __name__ == "__main__":
             print(f"\n--- Morse Code MP3 Generator (Training Edition) v{VERSION} ---")
             char_speed = float(input("Enter Character Speed (WPM) [default 12]: ") or 12)
             eff_speed = float(input("Enter Effective Word Speed (WPM) [default 5]: ") or 5)
+            if eff_speed > char_speed:
+                print(f"Note: Effective speed clamped to character speed ({char_speed} WPM).")
+                eff_speed = char_speed
             frequency = float(input("Enter Frequency (Hz) [default 650]: ") or 650)
             frequency = max(200.0, min(4000.0, frequency))
 
@@ -37,7 +40,7 @@ if __name__ == "__main__":
                 m_type = input("Mode (letters/numbers/punctuation/mixed/koch) [default mixed]: ").lower() or "mixed"
                 level = 2
                 if m_type == "koch":
-                    level = max(2, min(40, int(input("Koch Level (2-40) [default 2]: ") or 2)))
+                    level = max(2, min(len(morse_logic.KOCH_SEQUENCE), int(input(f"Koch Level (2-{len(morse_logic.KOCH_SEQUENCE)}) [default 2]: ") or 2)))
                 text = morse_logic.generate_random_text(count, m_type, level)
             else:
                 text = raw_input
