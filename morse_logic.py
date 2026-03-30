@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import shutil
 
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 
 MORSE_CODE = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
@@ -79,7 +79,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
     letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     numbers = "0123456789"
     punctuation = ".,?!/()&:;=+-_\"$@"
-    
+
     if mode == "letters":
         pool = letters
     elif mode == "numbers":
@@ -90,7 +90,7 @@ def generate_random_text(count=10, mode="mixed", koch_level=2):
         pool = KOCH_SEQUENCE[:max(2, min(koch_level, len(KOCH_SEQUENCE)))]
     else: # mixed
         pool = letters + numbers + punctuation
-    
+
     groups = []
     for _ in range(count):
         group = "".join(random.choice(pool) for _ in range(5))
@@ -177,7 +177,16 @@ def generate_voice_wav(text):
     clean_text = re.sub(r'[<>]', ' ', text)
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="voice_")
     os.close(fd)
-    
+
+    # new in version 1.0.7 (padriebby)
+    # insert spaces into text to force eSpeak to pronounce single
+    # characters, not complete words
+    clean_text_tmp = ""
+    for character in clean_text:
+        clean_text_tmp += character
+        clean_text_tmp += " "
+    clean_text = clean_text_tmp
+
     try:
         # 1. Check Environment Variable (Lead Dev preference)
         env_path = os.getenv("MTSPEAK")
@@ -234,13 +243,13 @@ def combine_wavs(wav_list):
             elif (file_params.nchannels != params.nchannels or
                   file_params.sampwidth != params.sampwidth or
                   file_params.framerate != params.framerate):
-                # Silently skip incompatible files or handle resampling? 
+                # Silently skip incompatible files or handle resampling?
                 # For now, let's just skip to prevent crashes.
                 continue
             data.append(w.readframes(w.getnframes()))
-    
+
     if not data: return None
-    
+
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="combined_")
     try:
         with os.fdopen(fd, 'wb') as tmp:
@@ -263,7 +272,7 @@ def get_lame_path():
             if cmd_path: return cmd_path
         elif os.path.exists(env_path):
             return env_path
-            
+
     # 2. Check PATH as fallback
     lame_path = shutil.which("lame")
     if lame_path:
@@ -273,9 +282,9 @@ def get_lame_path():
 
 def convert_wav_to_mp3(wav_filename, mp3_filename):
     lame_path = get_lame_path()
-    if not lame_path: 
+    if not lame_path:
         return False, "Lame encoder not found. Please install 'lame' (apt install lame)."
-    
+
     if not os.path.isabs(mp3_filename): mp3_filename = os.path.abspath(mp3_filename)
     try:
         result = subprocess.run(
