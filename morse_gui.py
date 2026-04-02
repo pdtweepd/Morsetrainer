@@ -33,6 +33,7 @@ class MorseApp:
         self.random_mode = tk.StringVar(value="mixed")
         self.koch_level = tk.IntVar(value=2)
         self.include_voice = tk.BooleanVar(value=False)
+        self.voice_language = tk.StringVar(value="en")
         self._preview_wavs = []
         self._playback_proc = None
 
@@ -82,6 +83,10 @@ class MorseApp:
         ttk.Entry(audio_frame, textvariable=self.freq, width=10).grid(row=0, column=1, sticky=tk.W, padx=5)
         
         ttk.Checkbutton(audio_frame, text="Include Voice Answer Key (requires espeak)", variable=self.include_voice).grid(row=0, column=2, sticky=tk.W, padx=20)
+
+        ttk.Label(audio_frame, text="Voice Language:").grid(row=1, column=0, sticky=tk.W)
+        voice_langs = ["en", "nl", "de", "fr", "es", "it", "pt", "pl", "ru", "zh", "ja", "ko"]
+        ttk.OptionMenu(audio_frame, self.voice_language, "en", *voice_langs).grid(row=1, column=1, sticky=tk.W, padx=5)
         
         # Text Input
         text_frame = ttk.LabelFrame(main_frame, text="Input Text", padding="10")
@@ -220,7 +225,7 @@ class MorseApp:
 
             wav_to_play = morse_wav
             if self.include_voice.get():
-                voice_wav = morse_logic.generate_voice_wav(text)
+                voice_wav = morse_logic.generate_voice_wav(text, self.voice_language.get())
                 if voice_wav:
                     self._preview_wavs.append(voice_wav)
                     combined = morse_logic.combine_wavs([morse_wav, voice_wav])
@@ -275,7 +280,7 @@ class MorseApp:
 
             final_wav = morse_wav
             if self.include_voice.get():
-                voice_wav = morse_logic.generate_voice_wav(text)
+                voice_wav = morse_logic.generate_voice_wav(text, self.voice_language.get())
                 if voice_wav:
                     combined_wav = morse_logic.combine_wavs([morse_wav, voice_wav])
                     if combined_wav:

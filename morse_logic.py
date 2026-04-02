@@ -172,7 +172,7 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
         if os.path.exists(path): os.remove(path)
         raise
 
-def generate_voice_wav(text):
+def generate_voice_wav(text, language="en"):
     """Generates a WAV file using espeak or other TTS."""
     clean_text = re.sub(r'[<>]', ' ', text)
     clean_text = " ".join(clean_text)
@@ -185,13 +185,13 @@ def generate_voice_wav(text):
         if env_path:
             cmd_path = shutil.which(env_path) if os.path.sep not in env_path else env_path
             if cmd_path and os.path.exists(cmd_path):
-                subprocess.run([cmd_path, "-w", path, clean_text], check=True, capture_output=True)
+                subprocess.run([cmd_path, "-v", language, "-s", "80", "-w", path, clean_text], check=True, capture_output=True)
                 return path
 
         # 2. Cross-platform check for espeak/espeak-ng as fallback
         espeak_path = shutil.which("espeak") or shutil.which("espeak-ng")
         if espeak_path:
-            subprocess.run([espeak_path, "-w", path, clean_text], check=True, capture_output=True)
+            subprocess.run([espeak_path, "-v", language, "-s", "80", "-w", path, clean_text], check=True, capture_output=True)
             return path
 
         # 3. On Windows, try PowerShell for TTS (no external dependency)

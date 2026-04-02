@@ -56,6 +56,9 @@ if __name__ == "__main__":
 
             voice = input("Include voice answer key? (yes/no) [default no]: ").lower().strip()
             include_voice = voice in ['yes', 'y']
+            voice_lang = "en"
+            if include_voice:
+                voice_lang = input("Voice language (en/nl/de/fr/es/it/pt/pl/ru/zh/ja/ko) [default en]: ").lower().strip() or "en"
 
             print(f"\nConfiguration:")
             print(f"- Text/Practice: '{text}'")
@@ -63,7 +66,7 @@ if __name__ == "__main__":
             print(f"- Effective Speed: {eff_speed} WPM")
             print(f"- Frequency: {frequency} Hz")
             print(f"- Output: {output_filename}")
-            print(f"- Voice: {'yes' if include_voice else 'no'}")
+            print(f"- Voice: {'yes (' + voice_lang + ')' if include_voice else 'no'}")
 
             confirm = input("\nExecute script? (yes/no): ").lower().strip()
 
@@ -79,7 +82,7 @@ if __name__ == "__main__":
                     final_wav = morse_wav
                     if include_voice:
                         print("Generating voice...")
-                        voice_wav = morse_logic.generate_voice_wav(text)
+                        voice_wav = morse_logic.generate_voice_wav(text, voice_lang)
                         if voice_wav:
                             combined_wav = morse_logic.combine_wavs([morse_wav, voice_wav])
                             if combined_wav:
