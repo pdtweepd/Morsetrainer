@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import shutil
 
-VERSION = "1.0.6"
+VERSION = "1.0.8"
 
 MORSE_CODE = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
@@ -175,9 +175,10 @@ def generate_morse_wav(text, tu, char_gap, word_gap, frequency=650.0):
 def generate_voice_wav(text):
     """Generates a WAV file using espeak or other TTS."""
     clean_text = re.sub(r'[<>]', ' ', text)
+    clean_text = " ".join(clean_text)
     fd, path = tempfile.mkstemp(suffix=".wav", prefix="voice_")
     os.close(fd)
-    
+
     try:
         # 1. Check Environment Variable (Lead Dev preference)
         env_path = os.getenv("MTSPEAK")
