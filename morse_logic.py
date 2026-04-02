@@ -222,23 +222,67 @@ def generate_voice_wav(text, language="en"):
     if os.path.exists(path): os.remove(path)
     return None
 
+def generate_silence_wav(duration=1.0, sample_rate=22050):
+    """Generates a silent WAV file of the given duration."""
+    import array as _array
+    num_samples = int(duration * sample_rate)
+    silence = _array.array('h', [0]) * num_samples
+    fd, path = tempfile.mkstemp(suffix=".wav", prefix="silence_")
+    try:
+        with os.fdopen(fd, 'wb') as tmp:
+            with wave.open(tmp, 'wb') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(silence.tobytes())
+        return path
+    except Exception:
+        if os.path.exists(path): os.remove(path)
+        raise
+
+def _resample(frames, sampwidth, src_rate, dst_rate):
+    """Resample audio frames from src_rate to dst_rate using linear interpolation."""
+    import struct as _struct
+    if src_rate == dst_rate:
+        return frames
+    fmt = {1: 'b', 2: '<h', 4: '<i'}[sampwidth]
+    sample_count = len(frames) // sampwidth
+    samples = _struct.unpack(f'{sample_count}{fmt}', frames)
+    ratio = src_rate / dst_rate
+    new_count = int(sample_count / ratio)
+    resampled = []
+    for i in range(new_count):
+        src_pos = i * ratio
+        idx = int(src_pos)
+        frac = src_pos - idx
+        if idx + 1 < sample_count:
+            val = samples[idx] * (1 - frac) + samples[idx + 1] * frac
+        else:
+            val = samples[idx] if idx < sample_count else 0
+        resampled.append(int(val))
+    return _struct.pack(f'{new_count}{fmt}', *resampled)
+
 def combine_wavs(wav_list):
-    """Combines multiple WAV files into one."""
+    """Combines multiple WAV files into one, resampling if needed."""
     data = []
     params = None
     for wav_file in wav_list:
         if not wav_file or not os.path.exists(wav_file): continue
         with wave.open(wav_file, 'rb') as w:
             file_params = w.getparams()
+            frames = w.readframes(w.getnframes())
             if params is None:
                 params = file_params
+                data.append(frames)
             elif (file_params.nchannels != params.nchannels or
-                  file_params.sampwidth != params.sampwidth or
-                  file_params.framerate != params.framerate):
-                # Silently skip incompatible files or handle resampling?
-                # For now, let's just skip to prevent crashes.
+                  file_params.sampwidth != params.sampwidth):
                 continue
-            data.append(w.readframes(w.getnframes()))
+            elif file_params.framerate != params.framerate:
+                resampled = _resample(frames, params.sampwidth,
+                                      file_params.framerate, params.framerate)
+                data.append(resampled)
+            else:
+                data.append(frames)
 
     if not data: return None
 

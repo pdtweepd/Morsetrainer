@@ -67,6 +67,7 @@ chmod +x $PKG_DIR/usr/bin/$APP_NAME
 # 5. Copy application files
 cp morse_logic.py $PKG_DIR/usr/share/$APP_NAME/
 cp morse_gui.py $PKG_DIR/usr/share/$APP_NAME/
+cp text_to_morse_mp3.py $PKG_DIR/usr/share/$APP_NAME/
 
 # 6. Build the package
 dpkg-deb --build --root-owner-group $PKG_DIR "${APP_NAME}_${VERSION}_all.deb"

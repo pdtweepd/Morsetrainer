@@ -49,6 +49,13 @@ if __name__ == "__main__":
                 print("Text cannot be empty.")
                 continue
 
+            text, ignored = morse_logic.sanitize_text(text)
+            if ignored:
+                print(f"Warning: Unsupported characters removed: {', '.join(sorted(ignored))}")
+            if not text.strip():
+                print("No valid Morse characters in input.")
+                continue
+
             default_output = os.path.join(os.path.expanduser("~"), "morse.mp3")
             output_filename = input(f"Output filename [default {default_output}]: ").strip() or default_output
             if not output_filename.endswith(".mp3"):
@@ -74,6 +81,7 @@ if __name__ == "__main__":
                 tu, _, char_g, word_g = morse_logic.calculate_timings(char_speed, eff_speed)
                 morse_wav = None
                 voice_wav = None
+                silence_wav = None
                 combined_wav = None
                 try:
                     print("Generating Morse code...")
@@ -84,7 +92,8 @@ if __name__ == "__main__":
                         print("Generating voice...")
                         voice_wav = morse_logic.generate_voice_wav(text, voice_lang)
                         if voice_wav:
-                            combined_wav = morse_logic.combine_wavs([morse_wav, voice_wav])
+                            silence_wav = morse_logic.generate_silence_wav(1.0)
+                            combined_wav = morse_logic.combine_wavs([morse_wav, silence_wav, voice_wav])
                             if combined_wav:
                                 final_wav = combined_wav
                         else:
@@ -98,7 +107,7 @@ if __name__ == "__main__":
                     else:
                         print(f"Error: {message}")
                 finally:
-                    for f in filter(None, [morse_wav, voice_wav, combined_wav]):
+                    for f in filter(None, [morse_wav, voice_wav, silence_wav, combined_wav]):
                         try:
                             if os.path.exists(f):
                                 os.remove(f)
