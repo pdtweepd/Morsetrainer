@@ -228,7 +228,9 @@ class MorseApp:
                 voice_wav = morse_logic.generate_voice_wav(text, self.voice_language.get())
                 if voice_wav:
                     self._preview_wavs.append(voice_wav)
-                    combined = morse_logic.combine_wavs([morse_wav, voice_wav])
+                    silence_wav = morse_logic.generate_silence_wav(1.0)
+                    self._preview_wavs.append(silence_wav)
+                    combined = morse_logic.combine_wavs([morse_wav, silence_wav, voice_wav])
                     if combined:
                         self._preview_wavs.append(combined)
                         wav_to_play = combined
@@ -279,10 +281,12 @@ class MorseApp:
             morse_wav = morse_logic.generate_morse_wav(text, tu, char_g, word_g, freq)
 
             final_wav = morse_wav
+            silence_wav = None
             if self.include_voice.get():
                 voice_wav = morse_logic.generate_voice_wav(text, self.voice_language.get())
                 if voice_wav:
-                    combined_wav = morse_logic.combine_wavs([morse_wav, voice_wav])
+                    silence_wav = morse_logic.generate_silence_wav(1.0)
+                    combined_wav = morse_logic.combine_wavs([morse_wav, silence_wav, voice_wav])
                     if combined_wav:
                         final_wav = combined_wav
 
@@ -298,7 +302,7 @@ class MorseApp:
             self.status.config(text="Error occurred!", foreground="red")
             messagebox.showerror("Error", str(e))
         finally:
-            for f in filter(None, [morse_wav, voice_wav, combined_wav]):
+            for f in filter(None, [morse_wav, voice_wav, silence_wav, combined_wav]):
                 try:
                     if os.path.exists(f):
                         os.remove(f)
